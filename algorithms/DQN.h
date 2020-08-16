@@ -30,7 +30,8 @@ public:
 		int _updateTargetEverySteps,
         float _maxGradientNorm=std::numeric_limits<float>::max(),
 		bool ddqn=false,
-		float tau=0
+		float tau=0,
+		bool usePER=false
 	):targetModel(targetModel),
 		onlineModel(onlineModel),
 		buffer(_buffer), 
@@ -39,11 +40,14 @@ public:
 		device(_device),nWarmupbatches(_warmUpBatches),
 		updateTargetEverySteps(_updateTargetEverySteps),
         maxGradientNorm(_maxGradientNorm),
-        DDQN(ddqn), tau(tau)
+        DDQN(ddqn), tau(tau), usePER(usePER)
         {}
 
 	void OptimizeModel(Tensor& states, Tensor& actions, Tensor& rewards,
                     Tensor& nextStates, Tensor& terminals, optim::RMSprop& optim,int gamma=1.0);
+
+    void OptimizeModel(Tensor& idx, Tensor& weights, Tensor& states, Tensor& actions, Tensor& rewards,
+                            Tensor& nextStates, Tensor& terminals, optim::RMSprop& optim, int gamma );
 
 	std::tuple<torch::Tensor, bool> interaction_step(Tensor& state, Env* env);
 
@@ -88,5 +92,6 @@ private:
 	int nWarmupbatches;
 	int updateTargetEverySteps;
 	ReplayBuffer* buffer;
+	bool usePER;
 };
 

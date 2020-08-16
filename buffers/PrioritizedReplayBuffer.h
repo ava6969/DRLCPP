@@ -12,6 +12,7 @@ using namespace torch;
 using namespace Utils;
 using namespace torch::indexing;
 
+
 class PrioritizedReplayBuffer {
 
 public:
@@ -32,8 +33,7 @@ public:
 
     void update(int idx, Tensor const& tdErrors);
 
-    template<typename T>
-    void store(ExperienceTuple<T> sample);
+    void store(Tensor const& sample);
 
     std::vector<Tensor> sample(int batch_size = -1);
 
@@ -42,7 +42,10 @@ public:
     [[nodiscard]] inline int64_t BatchSize() const { return batchSz; }
 
 private:
-    void updateBeta();
+    inline double updateBeta(){
+        beta = std::min(1.0, beta * std::pow(betaRate, -1));
+        return beta;
+    }
 
     int maxSamples;
     Tensor memory;

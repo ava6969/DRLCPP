@@ -3,6 +3,7 @@
 //
 
 #include "PrioritizedReplayBuffer.h"
+const double EPS = std::pow(10,-6);
 
 void PrioritizedReplayBuffer::update(int idx, const Tensor &tdErrors)
 {
@@ -15,12 +16,47 @@ void PrioritizedReplayBuffer::update(int idx, const Tensor &tdErrors)
     }
 }
 
-template<typename T>
-void PrioritizedReplayBuffer::store(ExperienceTuple<T> sample)
-{
 
+void PrioritizedReplayBuffer::store(Tensor const& sample)
+{
+    float priority = 1.0;
+    if (nEnteries > 0)
+        priority = memory.index({Slice(None,nEnteries),tdErrorIdx}).max().item<float>();
+    memory.index_put_({nextIdx, tdErrorIdx}, priority);
+    memory.index_put_({nextIdx,sampleIdx},sample);
+    nEnteries = std::min<int>(nEnteries+1, maxSamples);
+    nextIdx++;
+    nextIdx = nextIdx % maxSamples;
 }
 
-std::vector<Tensor> PrioritizedReplayBuffer::sample(int batch_size) {
-    return std::vector<Tensor>();
+std::vector<Tensor> PrioritizedReplayBuffer::sample(int batch_size)
+{
+    batchSz = batch_size == -1 ? batchSz : batch_size;
+    updateBeta();
+    auto entries = memory.index({Slice(None,nEnteries)});
+    Tensor priorities;
+    if (rankBased)
+        priorities = 1 / (torch::arange(nEnteries) + 1);
+    else
+        priorities = entries.index({Slice(None,None),tdErrorIdx}) + EPS;
+
+    auto scaledPriorites = torch::pow(priorities, alpha);
+    auto probs = scaledPriorites / scaledPriorites.sum();
+
+    auto weights = torch::pow(nEnteries * probs, -beta);
+    auto normalizedWeights = weights / weights.max();
+    // test
+    auto idxs = torch::multinomial(probs, batch_size, false );
+
+
+    auto samples = entries.index({idxs});
+    auto batchTypes = torch::cat(samples.index({Slice(None, None), sampleIdx})).unsqueeze(-1).transpose(0,1);
+    auto samplesStacks = torch::cat(batchTypes).unsqueeze(-1);
+    auto idxStacks = torch::cat(idxs).unsqueeze(-1);
+    auto weightsStack = torch::cat(normalizedWeights.index({idxs}));
+
+    return {idxStacks, weightsStack, samplesStacks};
+
+
+
 }

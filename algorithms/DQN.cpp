@@ -33,6 +33,38 @@ void DQN::OptimizeModel(Tensor& states, Tensor& actions, Tensor& rewards, Tensor
 	value_loss.backward();
 	torch::nn::utils::clip_grad_norm_(onlineModel->parameters(), maxGradientNorm);
 	optim.step();
+
+}
+
+void DQN::OptimizeModel(Tensor& idx, Tensor& weights, Tensor& states, Tensor& actions, Tensor& rewards, Tensor& nextStates, Tensor& terminals, optim::RMSprop& optim, int gamma, )
+{
+    // off policy TD Target
+
+    int batchSz = states.size(0);
+    Tensor max_a_q_sp{};
+    if (DDQN)
+    {
+        auto argMax_a_q_sp1  = onlineModel(nextStates).detach().max(1);
+        auto argMax_a_q_sp = get<1>(argMax_a_q_sp1);
+        torch::Tensor q_sp = targetModel->forward(nextStates).detach(); // get q_function at s', detach() disconnects reference and frees memory
+        max_a_q_sp = q_sp.gather(1, argMax_a_q_sp.unsqueeze(1));
+    }
+    else
+    {
+        torch::Tensor q_sp = targetModel->forward(nextStates).detach(); // get q_function at s', detach() disconnects reference and frees memory
+        max_a_q_sp = get<0>(q_sp.max(1)).unsqueeze(1);
+    }
+
+    auto target_q_s = rewards + gamma * max_a_q_sp * (1 - terminals);
+    auto q_sa = onlineModel->forward(states).gather(1, actions); // get estimate of current states
+    auto td_errors = q_sa - target_q_s;
+    auto value_loss = td_errors.pow(2).mul(0.5).mean();
+
+    optim.zero_grad();
+    value_loss.backward();
+    torch::nn::utils::clip_grad_norm_(onlineModel->parameters(), maxGradientNorm);
+    optim.step();
+
 }
 
 std::tuple<torch::Tensor, bool> DQN::interaction_step(Tensor& state, Env* env)
