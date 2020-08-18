@@ -24,44 +24,27 @@ class Env
 {
 
 protected:
-	std::unordered_map<string, bool> info;
-	/*Box2D state[4];*/
-	Tensor state{};
-	int action{};
+    Device device = kCPU;
+    bool render;
 
-	int stepsBeyondDone = -1;
-	int maxEpisodeStep;
-	int rewardThreshold;
-	int stateSize{};
-	int actionSize{};
-	Device device = kCPU;
-	/*shared_ptr<Viewer> viewer{};*/
-	int stepCounter{};
 public:
 
+    int64_t nS{};
+    int32_t nA{};
 
-	Env(Device _device, int maxEpisodeStep, int rewardThreshold, int seed = 0, bool render = false):device(_device)
+	explicit Env(Device _device,  int seed = 0, bool render = false):device(_device),render(render)
 	{
-	
 		torch::manual_seed(seed);
-		this->maxEpisodeStep = maxEpisodeStep;
-		this->rewardThreshold = rewardThreshold;
 	}
 
 	virtual Tensor reset() = 0;
 
     virtual ~Env() = default;
 
-	void close()
-	{
-        //viewer->close();
-	}
+	virtual void close()=0;
 
-	virtual std::tuple<Tensor, double, bool, std::unordered_map<string, bool> > step(double action) = 0;
+	virtual std::tuple<Tensor, double, bool, string> step(float action) = 0;
 
-	int getStateSpace() const { return stateSize; }
-	int getActionSpace() const { return actionSize; }
-	int MaxEpisodeStep() const { return maxEpisodeStep; }
-	int RewardThreshold() const { return rewardThreshold; }
+
 };
 

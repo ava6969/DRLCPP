@@ -1,21 +1,21 @@
 #pragma once
 #include <torch/torch.h>
+#include "Model.h"
 #include <iostream>
 #include <vector>
 
 using std::vector;
 using namespace torch;
 
-struct FCQImpl : nn::Module
+struct FCQ : public nn::Module, Model
 {
 	nn::Linear inLayer{ nullptr }; 
-	nn::Linear fc1{ nullptr }; 
-	//nn::Linear fc2{ nullptr };
+	nn::Linear fc1{ nullptr };
 	nn::Linear outLayer{ nullptr };
 	nn::Linear valueOut{nullptr};
     bool value=false;
 
-	FCQImpl(int64_t  inDim, int32_t  outDim, Device device, bool _value=false)
+	FCQ(int64_t  inDim, int32_t  outDim, Device device, bool _value=false)
 	{
         value = _value;
 		inLayer = register_module("inLayer", torch::nn::Linear(inDim, 512));
@@ -24,9 +24,10 @@ struct FCQImpl : nn::Module
 		if (value)
 		    valueOut = register_module("valueOut", torch::nn::Linear(128,1));
 		to(device);
+
 	}
 
-	torch::Tensor forward(torch::Tensor x)
+	torch::Tensor forward(torch::Tensor x) override
 	{
 
 		x = torch::relu(inLayer->forward(x));
@@ -41,8 +42,23 @@ struct FCQImpl : nn::Module
 		return a;
 	}
 
+	vector<torch::Tensor> Parameters(bool recurse) override
+    {
+        return parameters(recurse);
+    }
 
+    void Save(std::string const& name) override
+    {
+        torch::serialize::OutputArchive output_archive;
+        this->save(output_archive);
+        output_archive.save_to(name);
+    }
+
+    void Load(std::string const& name) override
+    {
+        torch::serialize::InputArchive input_archive;
+        this->load(input_archive);
+        input_archive.load_from(name);
+    }
 };
-
-TORCH_MODULE(FCQ);
 

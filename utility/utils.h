@@ -1,8 +1,9 @@
 #pragma once
-#include  <torch/torch.h>
+#include <torch/torch.h>
 #include <algorithm>
 #include <vector>
 #include <cassert>
+
 using namespace torch;
 using std::vector;
 
@@ -13,11 +14,11 @@ namespace Utils
 	{
 		std::cout << str << std::endl;
 	}
-	template<typename T>
+
 	struct ExperienceTuple
 	{
 		torch::Tensor states;
-		T actions;
+		float actions;
 		double rewards;
 		torch::Tensor nextStates;
 		bool terminals;

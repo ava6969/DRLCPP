@@ -1,6 +1,7 @@
 #pragma once
 #include <cstdint>
 #include "../utility/utils.h"
+#include <utility>
 #include <vector>
 #include <torch/torch.h>
 
@@ -25,8 +26,8 @@ private:
 public:
 	ReplayBuffer(vector<int64_t> stateSpace, int64_t actionSpace, int64_t maxSize, int64_t batchSz, Device device, int seed);
 
-	template<typename T>
-	void store(ExperienceTuple<T> sample);
+
+	void store(ExperienceTuple sample);
 
 	std::vector<Tensor> sample(int batch_size = -1);
 
@@ -35,10 +36,9 @@ public:
 };
 
 
-template<typename T>
-inline void ReplayBuffer::store(ExperienceTuple<T> sample)
+inline void ReplayBuffer::store(ExperienceTuple sample)
 {
-	auto [s, a, r, p, d] = sample;
+	auto [s, a, r, p, d] = std::move(sample);
 
 	ssMem[idx] = s;
 	asMem[idx] = a;

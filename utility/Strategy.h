@@ -1,12 +1,13 @@
 #pragma once
+#include "../models/Model.h"
 #include <torch/torch.h>
 
 using namespace torch;
 
-template<class T>
+
 struct Strategy
 {
-    virtual int  selectAction(T model, torch::Tensor state)
+    virtual float  selectAction(Model* model, torch::Tensor state)
     {
         Tensor qVals;
         {
@@ -14,20 +15,20 @@ struct Strategy
             qVals = model->forward(state).cpu().detach().squeeze();
         }
 
-        return  qVals.argmax().item<int>();
+        return  qVals.argmax().item<float>();
     }
 
     bool exploratoryActionTaken = false;
 
 };
 
-template<class T>
-struct EGreedyStrategy: public Strategy<T>
+
+struct EGreedyStrategy: public Strategy
 {
 
     EGreedyStrategy(double _epsilon) :epsilon(_epsilon) {}
 
-    int selectAction(T model, torch::Tensor state)
+    float selectAction(Model* model, torch::Tensor state)
     {
         this->exploratoryActionTaken = false;
 
@@ -41,11 +42,11 @@ struct EGreedyStrategy: public Strategy<T>
         int action;
 
         if (torch::rand({ 1 }).item<float>() > epsilon)
-            action = qVals.argmax().item<int>();
+            action = qVals.argmax().item<float>();
         else
-            action = torch::randint(high, { 1 }).item<int>();
+            action = torch::randint(high, { 1 }).item<float>();
 
-        this->exploratoryActionTaken = (action != (qVals.argmax()).item<int>());
+        this->exploratoryActionTaken = (action != (qVals.argmax()).item<float>());
         return action;
     }
 
@@ -54,8 +55,7 @@ private:
 
 };
 
-template<class T>
-struct EGreedyLinearStrategy : public Strategy<T>
+struct EGreedyLinearStrategy : public Strategy
 {
 private:
     float eps;
@@ -80,7 +80,7 @@ public:
     
     }
 
-    int selectAction(T model, torch::Tensor state) override
+    float selectAction(Model* model, torch::Tensor state) override
     {
         this->exploratoryActionTaken = false;
         Tensor qVals;
@@ -93,18 +93,16 @@ public:
         int action;
 
         if (torch::rand({ 1 }).item<float>() > eps)
-            action = qVals.argmax().item<int>();
+            action = qVals.argmax().item<float>();
         else
-            action = torch::randint(high, { 1 }).item<int>();
+            action = torch::randint(high, { 1 }).item<float>();
         eps = epsilon_update();
-        this->exploratoryActionTaken = (action != (qVals.argmax()).item<int>());
+        this->exploratoryActionTaken = (action != (qVals.argmax()).item<float>());
         return action;
     }
 
 };
-
-template<class T>
-struct EGreedyExpStrategy : public Strategy<T>
+struct EGreedyExpStrategy : public Strategy
 {
     EGreedyExpStrategy(float init_epsilon = 1.0, float min_epsilon = 0.1, float _decay_steps = 20000)
         :eps(init_epsilon), init_eps(init_epsilon), decay_steps(_decay_steps), min_eps(min_epsilon)
@@ -121,7 +119,7 @@ struct EGreedyExpStrategy : public Strategy<T>
         return eps;
     }
 
-    int selectAction(T model, torch::Tensor state) override
+    float selectAction(Model* model, torch::Tensor state) override
     {
         this->exploratoryActionTaken = false;
         Tensor qVals;
@@ -134,11 +132,11 @@ struct EGreedyExpStrategy : public Strategy<T>
         int action;
 
         if (torch::rand({ 1 }).item<float>() > eps)
-            action = qVals.argmax().item<int>();
+            action = qVals.argmax().item<float>();
         else
-            action = torch::randint(high, { 1 }).item<int>();
+            action = torch::randint(high, { 1 }).item<float>();
         eps = epsilon_update();
-        this->exploratoryActionTaken = (action != (qVals.argmax()).item<int>());
+        this->exploratoryActionTaken = (action != (qVals.argmax()).item<float>());
         return action;
     }
 
@@ -152,8 +150,8 @@ private:
 
 };
 
-template<class T>
-struct SoftMaxStrategy : public Strategy<T>
+
+struct SoftMaxStrategy : public Strategy
 {
 
     SoftMaxStrategy(double _init_temp = 1.0, double _min_temp = 0.1, float exploration_ratio=0.8, float _max_steps = 250000)
@@ -172,7 +170,7 @@ struct SoftMaxStrategy : public Strategy<T>
 
     }
 
-    int selectAction(T model, torch::Tensor state)
+    float selectAction(Model* model, torch::Tensor state)
     {
         this->exploratoryActionTaken = false;
         double temp = update_temp();
@@ -189,8 +187,8 @@ struct SoftMaxStrategy : public Strategy<T>
     
         auto high = qVals.size(0);
 
-        int action = torch::multinomial(probs, 1).item<int>();
-        this->exploratoryActionTaken = (action != (qVals.argmax()).item<int>());
+        int action = torch::multinomial(probs, 1).item<float>();
+        this->exploratoryActionTaken = (action != (qVals.argmax()).item<float>());
         return action;
     }
 

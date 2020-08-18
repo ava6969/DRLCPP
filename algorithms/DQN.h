@@ -20,11 +20,11 @@ class DQN
 {
 public:
 	/*Constructor*/
-	DQN(FCQ& onlineModel,
-		FCQ& targetModel,
+	DQN(Model* onlineModel,
+        Model* targetModel,
 		ReplayBuffer* _buffer,
-		Strategy<FCQ>* trainingStrategy,
-		Strategy<FCQ>* evalStrategy,
+		Strategy* trainingStrategy,
+		Strategy* evalStrategy,
 		Device& _device,
 		int _warmUpBatches,
 		int _updateTargetEverySteps,
@@ -47,45 +47,34 @@ public:
                     Tensor& nextStates, Tensor& terminals, optim::RMSprop& optim,int gamma=1.0);
 
     void OptimizeModel(Tensor& idx, Tensor& weights, Tensor& states, Tensor& actions, Tensor& rewards,
-                            Tensor& nextStates, Tensor& terminals, optim::RMSprop& optim, int gamma );
+                            Tensor& nextStates, Tensor& terminals, optim::RMSprop& optim, float gamma );
 
 	std::tuple<torch::Tensor, bool> interaction_step(Tensor& state, Env* env);
 
-	std::tuple<ResultVec, double, double, double> train(Env* env, optim::RMSprop& optimizer, int seed, int gamma,
-		int64_t max_minutes, int64_t max_episodes,
-		int64_t goal_mean_100_reward = -1);
-
-
-    std::tuple<torch::Tensor, bool> interaction_step(Tensor& state, const boost::shared_ptr<Client>& env);
-
-    std::tuple<ResultVec, double, double, double> train(const boost::shared_ptr<Client>& env, optim::RMSprop& optimizer,
-                                                        int seed, int gamma, int saveFREQ,
-                                                        int64_t max_minutes, int64_t max_episodes,
-                                                        int64_t goal_mean_100_reward = -1);
+	std::tuple<ResultVec, double, double, double> train(Env* mainEnv, Env* evalEnv, optim::RMSprop& optimizer,
+                                                        int seed, float gamma, int saveFREQ,
+		                                                int64_t max_minutes, int64_t max_episodes,
+		                                                int64_t goal_mean_100_reward);
 
 	void updateNetwork();
 
-	std::tuple<double, double> evaluate(Env* evalEnv,
-                                     const FCQ& EvalPolicyModel = nullptr, int64_t nEpisode = 1);
-    std::tuple<double, double> evaluate(const boost::shared_ptr<Client>& evalEnv,
-                                        bool render=false,
-                                        const FCQ& EvalPolicyModel= nullptr,
-                                        int64_t nEpisode=1);
-	void saveCheckpoint(int64_t episode=-1, const FCQ& Model=nullptr);
+	std::tuple<double, double> evaluate(Env* evalEnv,  Model* EvalPolicyModel = nullptr, int64_t nEpisode = 1);
+
+	void saveCheckpoint(int64_t episode=-1, Model* model=nullptr);
 
 
 private:
 
-	vector<Utils::ExperienceTuple<int>> experiences;
-	FCQ targetModel{ nullptr };
-	FCQ onlineModel{ nullptr };
+	vector<Utils::ExperienceTuple> experiences;
+    Model* targetModel{ nullptr };
+    Model* onlineModel{ nullptr };
 	bool exploratoryActionTaken = false;
 	Utils::TrainingInfo trainingInfo{};
     float tau;
 	Device device = torch::kCPU;
 
-	Strategy<FCQ>* trainingStrategy;
-	Strategy<FCQ>* evalStrategy;
+	Strategy* trainingStrategy;
+	Strategy* evalStrategy;
 	// hyperparams
 	bool DDQN;
 	float maxGradientNorm;

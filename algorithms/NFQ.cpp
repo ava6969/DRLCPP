@@ -10,9 +10,9 @@ using std::endl;
 auto currentTime = []() {return duration_cast<duration<double>>(std::chrono::high_resolution_clock::now().time_since_epoch()).count(); };
 
 NFQ::NFQ(
-	FCQ& _model,
-	Strategy<FCQ>* trainingStrategy,
-	Strategy<FCQ>* evalStrategy,
+	Model* _model,
+	Strategy* trainingStrategy,
+	Strategy* evalStrategy,
 	Device& _device,
 	int64_t batchSize,
 	float gamma
@@ -51,17 +51,17 @@ void NFQ::OptimizeModel(Tensor& states, Tensor& actions, Tensor& rewards, Tensor
 std::tuple<torch::Tensor, bool> NFQ::interaction_step(Tensor& state, Env* env)
 {
 	// select an epsilon greedy action
-	int action= trainingStrategy->selectAction(model, state);
-	bool exploratoryActionTaken = trainingStrategy->exploratoryActionTaken;
+	float action= trainingStrategy->selectAction(model, state);
+	exploratoryActionTaken = trainingStrategy->exploratoryActionTaken;
 	// perform a step into the world and store experience
 	auto [newState, reward, isTerminal, info] = env->step(action);
 	
 	// TODO: add truncate - ("isTruncated"!info["isTruncated"]
-	bool is_failure = isTerminal && !info["TimeLimit.truncated"];
+	bool is_failure = isTerminal && info != "TimeLimit.truncated";
 
 	// create an experience tuple from response from world
 	// store in experience buffer
-	experiences.emplace_back(Utils::ExperienceTuple<int>{state, action, reward, newState, is_failure });
+	experiences.emplace_back(Utils::ExperienceTuple{state, action, reward, newState, is_failure });
 
 	// fill episode info
 	trainingInfo.episodeReward.back() += reward;
@@ -158,9 +158,9 @@ std::tuple<ResultVec, double, double, double> NFQ::train(Env* env, optim::RMSpro
 
 		auto _time = currentTime() - lastDebugTime;
 		bool reachedDebugTime = _time >= LEAVE_PRINT_EVERY_N_SECS;
-		double reachedMaxMinutes = wallClockElapsed >= maxMinutes * 60;
-		double reachedMaxEpisodes = episode >= maxEpisodes;
-		double reachedGoalMeanReward = mean100EvalScore >= env->RewardThreshold();
+		bool reachedMaxMinutes = wallClockElapsed >= maxMinutes * 60;
+		bool reachedMaxEpisodes = episode >= maxEpisodes;
+		bool reachedGoalMeanReward = mean100EvalScore >= goalMean100Reward;
 		bool trainingIsOver = reachedMaxMinutes || reachedMaxEpisodes || reachedGoalMeanReward;
 
 		auto t = currentTime() - training_start;
@@ -229,8 +229,13 @@ std::tuple<double, double> NFQ::evaluate(Env* evalEnv, int64_t nEpisode)
 
 void NFQ::saveCheckpoint(int episode)
 {
-	// TO DO: Create Directories from class and save
-	torch::save(model, "SavedModels\\NFQCartPoleModel." + std::to_string(episode) + ".pth");
+    const std::string path = "/home/dewe/Documents/libtorch/SavedModel/DQNCartPoleModel." + std::to_string((int)episode) + ".pt";
+    if (episode > -1)
+        model->Save(path);
+    else{
+        const std::string fpath = "/home/dewe/Documents/libtorch/SavedModel/DQNCartPoleModel.final.pt";
+        model->Save(path);
+    }
 }
 
 

@@ -17,9 +17,9 @@ class NFQ
 {
 public:
 	/*Constructor*/
-	NFQ(FCQ& model,
-		Strategy<FCQ> *trainingStrategy,
-		Strategy<FCQ> *evalStrategy,
+	NFQ(Model* model,
+		Strategy*trainingStrategy,
+		Strategy*evalStrategy,
 		Device& _device,
 		int64_t batchSize,
 		float gamma
@@ -42,15 +42,15 @@ private:
 
 
 	int64_t batchSize;
-	vector<Utils::ExperienceTuple<int>> experiences;
-	FCQ model{nullptr};
+	vector<Utils::ExperienceTuple> experiences;
+    Model* model{nullptr};
 	bool exploratoryActionTaken = false;
 	Utils::TrainingInfo trainingInfo{};
 
 	Device device = torch::kCPU;
 
-	Strategy<FCQ>* trainingStrategy;
-	Strategy<FCQ>* evalStrategy;
+	Strategy* trainingStrategy;
+	Strategy* evalStrategy;
 	// hyperparams
 	float gamma;
 

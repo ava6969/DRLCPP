@@ -71,6 +71,19 @@ class CartPoleEnv : public Env
 	//}
 private:
 	// GameRelated
+
+    /*Box2D state[4];*/
+    Tensor state{};
+    int action{};
+    string info = "";
+    int stepsBeyondDone = -1;
+    int maxEpisodeStep = 500;
+    int rewardThreshold = 475.0;
+    int stateSize{};
+    int actionSize{};
+
+    /*shared_ptr<Viewer> viewer{};*/
+    int stepCounter{};
 	float gravity = 9.8;
 	float masscart = 1.0;
 	float masspole = 0.1;
@@ -84,17 +97,18 @@ private:
 	double thetaThresholdRadians = 12 * 2 * PI / 360;
 	double xThreshold = 2.4;
 //	std::thread worker;
-	bool render{false};
+
 	bool done{false};
 	double reward{ 0.0 };
 
 
+
 public:
-	CartPoleEnv(Device _device, int seed = 0, bool render = false) :Env(_device, 500, 475.0, seed, render)
+	CartPoleEnv(Device _device, int seed = 0, bool render = false) :Env(_device,seed, render)
 	{
 		actionSize = 2;
 		stateSize = 4;
-		this->render = render;
+/*		this->render = render;*/
 /*		viewer = std::make_shared<CartPoleViewer>();
 		if (render)
 		{
@@ -105,7 +119,7 @@ public:
 
 	}
 
-	std::tuple<Tensor, double, bool, std::unordered_map<string, bool> > step(double action) override
+	std::tuple<Tensor, double, bool, string > step(float action) override
 
 	{
 		//TODO Assert action contains action space
@@ -150,7 +164,7 @@ public:
 		done = x < -xThreshold || x > xThreshold || theta < -thetaThresholdRadians || theta > thetaThresholdRadians;
 
 		++stepCounter;
-		info["TimeLimit.truncated"] = stepCounter == maxEpisodeStep;
+		info = stepCounter == maxEpisodeStep ? "TimeLimit.truncated" : "";
 
 		if (!done)
 			reward = 1;
@@ -175,14 +189,14 @@ public:
 			reward = 0.0;
 		}
 
-		return { state, reward, done, info };
+		return {state, reward, done, info };
 	}
 
 	Tensor reset()
 	{
 		stepCounter = 0;
 		stepsBeyondDone = -1;
-		info["TimeLimit.truncated"] = false;
+		info = "";
 		state = torch::rand({ stateSize }, device).uniform_(-0.05, 0.05);
 		return state;
 	}

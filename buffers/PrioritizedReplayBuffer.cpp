@@ -55,6 +55,11 @@ std::vector<Tensor> PrioritizedReplayBuffer::sample(int batch_size)
     auto idxStacks = torch::cat(idxs).unsqueeze(-1);
     auto weightsStack = torch::cat(normalizedWeights.index({idxs}));
 
+//    vector<Tensor> experience = { torch::cat(ssMem.index({ idxVect })),
+//                                  torch::cat(asMem.index({idxVect})),
+//                                  torch::cat(rsMem.index({idxVect})),
+//                                  torch::cat(psMem.index({idxVect})),
+//                                  torch::cat(dsMem.index({idxVect}))};
     return {idxStacks, weightsStack, samplesStacks};
 
 
