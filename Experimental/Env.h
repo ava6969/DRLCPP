@@ -43,8 +43,14 @@ public:
 
 	virtual void close()=0;
 
-	virtual std::tuple<Tensor, double, bool, string> step(float action) = 0;
-
+	virtual std::tuple<Tensor, double, bool, string> step(float action)
+    {
+        return {};
+    }
+	virtual std::tuple<Tensor, vector<double>, vector<bool>, vector<string>> step(Tensor const& actions)
+    {
+        return {};
+    }
 
 };
 

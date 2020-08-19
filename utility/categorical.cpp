@@ -2,7 +2,7 @@
 #include <torch/torch.h>
 
 #include "categorical.h"
-
+using torch::indexing::Slice;
 
 namespace cpprl {
     Categorical::Categorical(const torch::Tensor *probs,

@@ -2,8 +2,7 @@
 // Created by dewe on 8/17/20.
 //
 
-#ifndef DRLCPP_REINFORCE_H
-#define DRLCPP_REINFORCE_H
+#pragma once
 
 #include "../models/Model.h"
 #include "../Experimental/Env.h"
@@ -11,7 +10,8 @@
 
 using ResultVec = vector< vector<double> >;
 
-class REINFORCE {
+class REINFORCE
+        {
 public:
     /*Constructor*/
     REINFORCE(Model* onlineModel, Device& _device
@@ -38,6 +38,3 @@ private:
     vector<float> rewards;
     vector<Tensor> logPas;
 };
-
-
-#endif //DRLCPP_REINFORCE_H

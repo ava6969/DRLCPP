@@ -6,22 +6,23 @@
 #include <vector>
 using namespace torch;
 
+
 struct Model
 {
     virtual torch::Tensor forward(torch::Tensor x) = 0;
     virtual std::vector<torch::Tensor> Parameters(bool recurse=true) = 0;
     virtual void Save(std::string const& name) = 0;
     virtual void Load(std::string const& name) = 0;
-    virtual std::tuple<float, bool, Tensor, Tensor> fullPass(Tensor state)
+    virtual std::tuple<Tensor, Tensor, Tensor, Tensor> fullPass(Tensor state)
     {
         return {};
     }
-    virtual float selectAction(Tensor state)
+    virtual Tensor selectAction(Tensor state)
     {
-        return 0;
+        return {};
     }
-    virtual float selectGreedyAction(Tensor state)
+    virtual Tensor selectGreedyAction(Tensor state)
     {
-        return 0;
+        return {};
     }
 };

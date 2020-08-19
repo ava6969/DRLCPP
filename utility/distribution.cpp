@@ -2,7 +2,7 @@
 #include <ctype.h>
 
 #include "distribution.h"
-
+using torch::indexing::Slice;
 namespace cpprl
 {
 std::vector<int64_t> Distribution::extended_shape(c10::ArrayRef<int64_t> sample_shape)

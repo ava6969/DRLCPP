@@ -30,7 +30,6 @@ for(int t = 0; t < T; t++)
     auto lPas = torch::cat(logPas).unsqueeze(-1);
 
     auto policyLoss = -(discounts*ret*lPas).mean();
-    //cout << -(discounts*ret*lPas.unsqueeze(-1)).mean() << " " << policyLoss << endl;
     optim.zero_grad();
     policyLoss.backward();
     optim.step();
@@ -145,11 +144,16 @@ REINFORCE::train(Env *mainEnv, Env *evalEnv, optim::Adam &optimizer, int seed, f
 std::tuple<torch::Tensor, bool> REINFORCE::interaction_step(Tensor &state, Env *env)
 {
     float action;
+    Tensor actionT;
+    Tensor exploratoryT;
+
     Tensor logPa;
     Tensor newState;
     double reward;
     bool isTerminal;
-    std::tie(action, exploratoryActionTaken, logPa, std::ignore) = onlineModel->fullPass(state);
+    std::tie(actionT, exploratoryT, logPa, std::ignore) = onlineModel->fullPass(state);
+    action = actionT.item<float>();
+    exploratoryActionTaken = exploratoryT.item<float>();
     std::tie(newState, reward, isTerminal, std::ignore) = env->step(action);
 
     logPas.push_back(logPa);
@@ -172,7 +176,7 @@ std::tuple<double, double> REINFORCE::evaluate(Env *evalEnv, Model *EvalPolicyMo
         res.push_back(0);
         while (true)
         {
-            float a = onlineModel->selectGreedyAction(state.unsqueeze(0));
+            auto a = onlineModel->selectGreedyAction(state.unsqueeze(0)).item<float>();
             auto out = evalEnv->step(a);
             state = get<0>(out);
             res.back() += get<1>(out);

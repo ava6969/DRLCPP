@@ -3,6 +3,8 @@
 //
 
 #include "PrioritizedReplayBuffer.h"
+
+
 const double EPS = std::pow(10,-6);
 
 void PrioritizedReplayBuffer::update(int idx, const Tensor &tdErrors)

@@ -24,6 +24,8 @@ namespace Utils
 		bool terminals;
 	};
 
+
+
 	struct TrainingInfo
 	{
 		vector<double> episodeReward;
@@ -55,6 +57,39 @@ namespace Utils
 
 		}
 	};
+
+//    struct MultiTrainingInfo
+//    {
+//        vector<vector<double>> episodeReward;
+//        vector<vector<int>> episodeTimestep;
+//        vector<vector<double>> evaluationScores;
+//        vector<vector<double>> episodeSeconds;
+//        vector<int> episodeExploration;
+//
+//        vector<double>  explore_ratio(int top_k)
+//        {
+//            assert(episodeExploration.size() == episodeTimestep.size());
+//            vector<double> ratios;
+//
+//
+//            int diff = episodeExploration.size() - top_k;
+//            bool greater = diff <= 0;
+//
+//            int start = greater ? 0 : episodeExploration.size() - top_k;
+//            if (episodeExploration.size() > 1)
+//
+//                std::transform(
+//                        begin(episodeExploration) + start,
+//                        end(episodeExploration),
+//                        begin(episodeTimestep) + start,
+//                        back_inserter(ratios),
+//                        [](int a, int b) { return (double)a / b; });
+//
+//            return ratios;
+//
+//        }
+//    };
+
 	template<typename T>
 	double mean(vector<T> vect, int top_k = 0)
 	{

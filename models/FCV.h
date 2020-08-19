@@ -18,8 +18,7 @@ struct FCVImpl : public nn::Module
     nn::Linear inLayer{ nullptr };
     nn::Linear fc1{ nullptr };
     nn::Linear outLayer{ nullptr };
-    nn::Linear valueOut{nullptr};
-    bool value=false;
+
 
     FCVImpl(int64_t  inDim, Device device)
     {
@@ -35,9 +34,7 @@ struct FCVImpl : public nn::Module
     {
         x = torch::relu(inLayer->forward(x));
         x = torch::relu(fc1->forward(x));
-        auto a = outLayer->forward(x);
-
-        return a;
+        return outLayer->forward(x);
     }
 
 };

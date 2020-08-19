@@ -9,7 +9,9 @@ using std::endl;
 auto currentTime = []() {return duration_cast<duration<double>>(std::chrono::high_resolution_clock::now().time_since_epoch()).count(); };
 using namespace torch::indexing;
 
-void VPG::OptimizeModel(optim::Adam& pOptim, optim::Adam& vOptim, float gamma)
+
+
+void VPG::OptimizeModel(optim::Adam& pOptim, optim::RMSprop& vOptim, float gamma)
 {
     int T = rewards.size();
     auto rew = torch::from_blob(rewards.data(),{T}).to(device);
@@ -33,14 +35,16 @@ for(int t = 0; t < T; t++)
     auto policyLoss = -(discounts*valError.detach()*lPas ).mean();
     auto entropy_loss = -entr.mean();
 
-    Tensor loss = policyLoss + (entropyLossWeight * entropy_loss);
+    Tensor loss = policyLoss + entropyLossWeight * entropy_loss;
+
     pOptim.zero_grad();
     loss.backward();
     torch::nn::utils::clip_grad_norm_(policyModel->Parameters(), policyMaxGradNorm);
     pOptim.step();
 
+
     auto valLoss = valError.pow(2).mul(0.5).mean();
-    cout << valLoss << endl;
+
     vOptim.zero_grad();
     valLoss.backward();
     torch::nn::utils::clip_grad_norm_(valueModel->parameters(), valueMaxGradNorm);
@@ -49,7 +53,7 @@ for(int t = 0; t < T; t++)
 }
 
 std::tuple<ResultVec, double, double, double>
-VPG::train(Env *mainEnv, Env *evalEnv, optim::Adam& pOptim, optim::Adam& vOptim, int seed, float gamma, int saveFREQ,
+VPG::train(Env *mainEnv, Env *evalEnv, optim::Adam& pOptim, optim::RMSprop& vOptim, int seed, float gamma, int saveFREQ,
                  int64_t maxMinutes, int64_t maxEpisodes, int64_t goal_mean_100_reward)
                  {
 
@@ -68,7 +72,7 @@ VPG::train(Env *mainEnv, Env *evalEnv, optim::Adam& pOptim, optim::Adam& vOptim,
 
                          Tensor state = mainEnv->reset();
                          bool isTerminal = false;
-
+                         bool isTruncated = false;
                          trainingInfo.episodeReward.emplace_back(0.0);
                          trainingInfo.episodeTimestep.emplace_back(0.0);
                          trainingInfo.episodeExploration.emplace_back(0.0);
@@ -80,11 +84,12 @@ VPG::train(Env *mainEnv, Env *evalEnv, optim::Adam& pOptim, optim::Adam& vOptim,
 
                          while (true)
                          {
-                             std::tie(state, isTerminal) = interaction_step(state, mainEnv);
+                             std::tie(state, isTerminal, isTruncated) = interaction_step(state, mainEnv);
                              if (isTerminal)
                                  break;
                          }
-                         auto nextVal = valueModel->forward(state).detach().item<float>();
+                         bool is_failure = isTerminal && !isTruncated;
+                         auto nextVal = is_failure ? 0 : valueModel->forward(state).detach().item<float>();
                          rewards.push_back(nextVal);
                          OptimizeModel( pOptim, vOptim, gamma);
 
@@ -158,28 +163,35 @@ VPG::train(Env *mainEnv, Env *evalEnv, optim::Adam& pOptim, optim::Adam& vOptim,
                      return { result, finalEvalScore, training_time, wallClockTime };
 }
 
-std::tuple<torch::Tensor, bool> VPG::interaction_step(Tensor &state, Env *env)
+std::tuple<torch::Tensor, bool, bool> VPG::interaction_step(Tensor &state, Env *env)
 {
     float action;
+
+    Tensor actionT;
+    Tensor exploratoryT;
     Tensor logPa;
     Tensor newState;
     double reward;
     bool isTerminal;
     Tensor entropy;
-    std::tie(action, exploratoryActionTaken, logPa, entropy) = policyModel->fullPass(state);
-    std::tie(newState, reward, isTerminal, std::ignore) = env->step(action);
+    string info;
+    std::tie(actionT, exploratoryT, logPa, entropy) = policyModel->fullPass(state);
+    std::tie(newState, reward, isTerminal, info) = env->step(action);
+
+    action = actionT.item<float>();
+    exploratoryActionTaken = exploratoryT.item<float>();
 
     logPas.push_back(logPa);
     rewards.push_back(reward);
     entropies.push_back(entropy);
-    auto val = valueModel->forward(state);
-    values.push_back(val);
+    values.emplace_back(valueModel->forward(state));
 
+    bool isTruncated = info != "";
     trainingInfo.episodeReward.back() += reward;
     trainingInfo.episodeTimestep.back() += 1.0;
     trainingInfo.episodeExploration.back() += int(exploratoryActionTaken);
 
-    return { newState, isTerminal };
+    return { newState, isTerminal, isTruncated };
 }
 
 std::tuple<double, double> VPG::evaluate(Env *evalEnv, Model *EvalPolicyModel, int64_t nEpisode)
@@ -192,7 +204,7 @@ std::tuple<double, double> VPG::evaluate(Env *evalEnv, Model *EvalPolicyModel, i
         res.push_back(0);
         while (true)
         {
-            float a = policyModel->selectGreedyAction(state.unsqueeze(0));
+            auto a = policyModel->selectGreedyAction(state.unsqueeze(0)).item<float>();
             auto out = evalEnv->step(a);
             state = get<0>(out);
             res.back() += get<1>(out);

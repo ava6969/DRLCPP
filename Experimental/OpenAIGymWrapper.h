@@ -36,10 +36,13 @@ public:
         return torch::tensor(s.observation, device);
     }
 
+    boost::shared_ptr<Space> ActionSpace() const {return action_space;}
+    boost::shared_ptr<Space> ObservationSpace() const {return observation_space;}
 
     void close() override
     {
         std::cout << id  << " closed" << std::endl;
+
     }
 
     std::tuple<Tensor, double, bool, string> step(float action) override

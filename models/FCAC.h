@@ -1,3 +1,7 @@
+//
+// Created by dewe on 8/18/20.
+//
+
 #pragma once
 #include <torch/torch.h>
 #include "Model.h"
@@ -9,21 +13,21 @@
 using std::vector;
 using namespace torch;
 
-struct FCDP : public nn::Module, Model
+struct FCAC : public nn::Module, Model
 {
     nn::Linear inLayer{ nullptr };
     nn::Linear fc1{ nullptr };
-    nn::Linear outLayer{ nullptr };
+    nn::Linear poutLayer{ nullptr };
+    nn::Linear voutLayer{ nullptr };
 
 
-    FCDP(int64_t  inDim, int32_t  outDim, Device device)
+    FCAC(int64_t  inDim, int32_t  outDim)
     {
 
         inLayer = register_module("inLayer", torch::nn::Linear(inDim, 128));
         fc1 = register_module("fc1", torch::nn::Linear(128, 64));
-        outLayer = register_module("outLayer", torch::nn::Linear(64, outDim));
-
-        this->to(device);
+        poutLayer = register_module("poutLayer", torch::nn::Linear(64, outDim));
+        voutLayer = register_module("voutLayer", torch::nn::Linear(64, 1));
 
     }
 
@@ -31,13 +35,15 @@ struct FCDP : public nn::Module, Model
     {
         x = torch::relu(inLayer->forward(x));
         x = torch::relu(fc1->forward(x));
-        auto a = outLayer->forward(x);
-        return a;
+        auto a = poutLayer->forward(x);
+        auto v = voutLayer->forward(x);
+        vector<Tensor> k = {a, v};
+        return cat(k);
     }
 
     std::tuple<Tensor, Tensor, Tensor, Tensor> fullPass(Tensor state) override
     {
-        auto logits = forward(std::move(state));
+        auto logits = forward(std::move(state)).slice(0,0,-1);
         cpprl::Categorical dist(nullptr, &logits);
         auto action = dist.sample();
         auto logpa =  dist.log_prob(action).unsqueeze(-1);
@@ -53,7 +59,7 @@ struct FCDP : public nn::Module, Model
 
     Tensor selectAction(Tensor state) override
     {
-        auto logits = forward(std::move(state));
+        auto logits = forward(std::move(state)).slice(0,0,-1);
         cpprl::Categorical dist(nullptr, &logits);
         auto action = dist.sample();
         return action;
@@ -61,7 +67,7 @@ struct FCDP : public nn::Module, Model
 
     Tensor selectGreedyAction(Tensor state) override
     {
-        auto logits = forward(std::move(state));
+        auto logits = forward(std::move(state)).slice(0,0,-1);
         return torch::argmax(logits.detach());
     }
 
@@ -77,6 +83,11 @@ struct FCDP : public nn::Module, Model
         torch::serialize::InputArchive input_archive;
         this->load(input_archive);
         input_archive.load_from(name);
+    }
+    Tensor evaluate_state(Tensor& state)
+    {
+        auto v = forward(state).index({-1});
+        return v;
     }
 };
 

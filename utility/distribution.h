@@ -4,6 +4,7 @@
 
 namespace cpprl
 {
+
 class Distribution
 {
   protected:
