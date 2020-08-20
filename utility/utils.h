@@ -24,73 +24,42 @@ namespace Utils
 		bool terminals;
 	};
 
+	struct TrainingInfo {
+        vector<double> episodeReward;
+        vector<int64_t> episodeTimestep;
+        vector<double> evaluationScores;
+        vector<int64_t> episodeSeconds;
+        vector<int64_t> episodeExploration;
+
+        vector<double> explore_ratio(int top_k) {
+            assert(trainingInfo.episodeExploration.size() == episodeTimestep.size());
+            vector<double> ratios;
 
 
-	struct TrainingInfo
-	{
-		vector<double> episodeReward;
-		vector<int> episodeTimestep;
-		vector<double> evaluationScores;
-		vector<double> episodeSeconds;
-		vector<int> episodeExploration;
+            int diff = episodeExploration.size() - top_k;
+            bool greater = diff <= 0;
 
-		vector<double>  explore_ratio(int top_k)
-		{
-			assert(episodeExploration.size() == episodeTimestep.size());
-			vector<double> ratios;
+            int start = greater ? 0 : episodeExploration.size() - top_k;
+            if (episodeExploration.size() > 1)
+
+                std::transform(
+                        begin(episodeExploration) + start,
+                        end(episodeExploration),
+                        begin(episodeTimestep) + start,
+                        back_inserter(ratios),
+                        [](int a, int b) { return (double) a / b; });
+
+            return ratios;
+        }
+    };
 
 
-			int diff = episodeExploration.size() - top_k;
-			bool greater = diff <= 0;
-
-			int start = greater ? 0 : episodeExploration.size() - top_k;
-			if (episodeExploration.size() > 1)
-
-				std::transform(
-					begin(episodeExploration) + start,
-					end(episodeExploration),
-					begin(episodeTimestep) + start,
-					back_inserter(ratios),
-					[](int a, int b) { return (double)a / b; });
-
-			return ratios;
-
-		}
-	};
-
-//    struct MultiTrainingInfo
-//    {
-//        vector<vector<double>> episodeReward;
-//        vector<vector<int>> episodeTimestep;
-//        vector<vector<double>> evaluationScores;
-//        vector<vector<double>> episodeSeconds;
-//        vector<int> episodeExploration;
-//
-//        vector<double>  explore_ratio(int top_k)
-//        {
-//            assert(episodeExploration.size() == episodeTimestep.size());
-//            vector<double> ratios;
-//
-//
-//            int diff = episodeExploration.size() - top_k;
-//            bool greater = diff <= 0;
-//
-//            int start = greater ? 0 : episodeExploration.size() - top_k;
-//            if (episodeExploration.size() > 1)
-//
-//                std::transform(
-//                        begin(episodeExploration) + start,
-//                        end(episodeExploration),
-//                        begin(episodeTimestep) + start,
-//                        back_inserter(ratios),
-//                        [](int a, int b) { return (double)a / b; });
-//
-//            return ratios;
-//
-//        }
-//    };
-
-	template<typename T>
+    template<typename T>
+    double sum(vector<T> vect)
+    {
+        return (double)std::accumulate(vect.begin(), vect.end(), 0) / vect.size();
+    }
+    template<typename T>
 	double mean(vector<T> vect, int top_k = 0)
 	{
 		if (vect.size() == 0)

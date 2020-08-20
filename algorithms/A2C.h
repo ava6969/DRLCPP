@@ -8,6 +8,7 @@
 
 #include "../models/Model.h"
 #include "../Experimental/Env.h"
+#include "../Experimental/MultiProcessEnv.h"
 #include "../utility/utils.h"
 
 using ResultVec = vector< vector<double> >;
@@ -21,10 +22,17 @@ private:
     float entropyLossWeight;
     int maxNSteps;
     int nWorkers;
+    Tensor isExploratories;
 
-    vector<vector<double>> rewards;
+    Tensor runningTimestep =torch::zeros({nWorkers, 1});
+    Tensor runningReward =torch::zeros({nWorkers, 1});
+    Tensor runningExplore =torch::zeros({nWorkers, 1});
+    Tensor runningSecond =torch::full({nWorkers, 1}, 0.0,kF64);
+
+    vector<Tensor> rewards;
     vector<Tensor> logPas, entropies, values;
     float policyMaxGradNorm;
+
     Utils::TrainingInfo trainingInfo{};
 public:
     A2C(Model* acModel, float policyLossWeight, float valueLossWeight, float entropyLossWeight, int maxNSteps, int nWorkers,
@@ -34,18 +42,16 @@ public:
 
     void OptimizeModel(optim::Adam &pOptim, float gamma, float tau);
 
-    std::tuple<torch::Tensor, vector<bool>> interaction_step(Tensor &states, Env *env);
+    std::tuple<torch::Tensor, vector<bool>>  interaction_step(Tensor &states, MultiProcessEnv *env);
 
-    std::tuple<ResultVec, double, double, double> train(Env* mainEnv, Env* evalEnv,
-                                                        optim::Adam& pOptim, optim::RMSprop& vOptim,
-                                                        int seed, float gamma, int saveFREQ,
+    std::tuple<ResultVec, double, double, double> train(MultiProcessEnv* mainEnv, Env* evalEnv,
+                                                        optim::Adam& pOptim,
+                                                        int seed, float gamma, float tau, int saveFREQ,
                                                         int64_t max_minutes, int64_t max_episodes,
                                                         int64_t goal_mean_100_reward);
 
     std::tuple<double, double> evaluate(Env* evalEnv,  Model* EvalPolicyModel = nullptr, int64_t nEpisode = 1);
-
     void saveCheckpoint(int64_t episode=-1, Model* model=nullptr);
-
 };
 
 

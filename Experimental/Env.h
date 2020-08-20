@@ -35,9 +35,11 @@ public:
 	explicit Env(Device _device,  int seed = 0, bool render = false):device(_device),render(render)
 	{
 		torch::manual_seed(seed);
+
 	}
 
 	virtual Tensor reset() = 0;
+
 
     virtual ~Env() = default;
 
@@ -51,6 +53,7 @@ public:
     {
         return {};
     }
+
 
 };
 

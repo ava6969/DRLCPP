@@ -25,4 +25,8 @@ struct Model
     {
         return {};
     }
+    virtual Tensor evaluate_state(Tensor& state)
+    {
+        return {};
+    }
 };

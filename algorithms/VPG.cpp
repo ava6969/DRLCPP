@@ -9,8 +9,6 @@ using std::endl;
 auto currentTime = []() {return duration_cast<duration<double>>(std::chrono::high_resolution_clock::now().time_since_epoch()).count(); };
 using namespace torch::indexing;
 
-
-
 void VPG::OptimizeModel(optim::Adam& pOptim, optim::RMSprop& vOptim, float gamma)
 {
     int T = rewards.size();
@@ -112,7 +110,7 @@ VPG::train(Env *mainEnv, Env *evalEnv, optim::Adam& pOptim, optim::RMSprop& vOpt
                          double std100Reward = Utils::std(trainingInfo.episodeReward, 100);
                          double mean100EvalScore = Utils::mean(trainingInfo.evaluationScores, 100);
                          double std100EvalScore = Utils::std(trainingInfo.evaluationScores, 100);
-                         vector<double> last100ExploreRatios = trainingInfo.explore_ratio(100);
+                         vector<double> last100ExploreRatios = trainingInfo.explore_ratio( 100);
                          double mean100ExploreRatio = Utils::mean(last100ExploreRatios);
                          double std100ExploreRatio = Utils::std(last100ExploreRatios, 100);
 
@@ -176,9 +174,10 @@ std::tuple<torch::Tensor, bool, bool> VPG::interaction_step(Tensor &state, Env *
     Tensor entropy;
     string info;
     std::tie(actionT, exploratoryT, logPa, entropy) = policyModel->fullPass(state);
+    action = actionT.item<float>();
     std::tie(newState, reward, isTerminal, info) = env->step(action);
 
-    action = actionT.item<float>();
+
     exploratoryActionTaken = exploratoryT.item<float>();
 
     logPas.push_back(logPa);
@@ -218,11 +217,11 @@ std::tuple<double, double> VPG::evaluate(Env *evalEnv, Model *EvalPolicyModel, i
 }
 
 void VPG::saveCheckpoint(int64_t episode, Model *model) {
-    const std::string path = "/home/dewe/Documents/libtorch/SavedModel/DQNCartPoleModel." + std::to_string((int)episode) + ".pt";
+    const std::string path = "/home/dewe/CLionProjects/DRLCPP/SavedModel/DQNCartPoleModel." + std::to_string((int)episode) + ".pt";
     if (episode > -1)
         policyModel->Save(path);
     else{
-        const std::string fpath = "/home/dewe/Documents/libtorch/SavedModel/DQNCartPoleModel.final.pt";
+        const std::string fpath = "/home/dewe/CLionProjects/DRLCPP/SavedModel/DQNCartPoleModel.final.pt";
         policyModel->Save( path);
     }
 }

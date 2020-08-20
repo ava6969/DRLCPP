@@ -12,7 +12,8 @@
 
 using std::vector;
 using namespace torch;
-
+using namespace std;
+using namespace torch::indexing;
 struct FCAC : public nn::Module, Model
 {
     nn::Linear inLayer{ nullptr };
@@ -24,32 +25,38 @@ struct FCAC : public nn::Module, Model
     FCAC(int64_t  inDim, int32_t  outDim)
     {
 
-        inLayer = register_module("inLayer", torch::nn::Linear(inDim, 128));
-        fc1 = register_module("fc1", torch::nn::Linear(128, 64));
-        poutLayer = register_module("poutLayer", torch::nn::Linear(64, outDim));
-        voutLayer = register_module("voutLayer", torch::nn::Linear(64, 1));
+        inLayer = register_module("inLayer", torch::nn::Linear(inDim, 256));
+        fc1 = register_module("fc1", torch::nn::Linear(256, 128));
+        poutLayer = register_module("poutLayer", torch::nn::Linear(128, outDim));
+        voutLayer = register_module("voutLayer", torch::nn::Linear(128, 1));
 
     }
 
-    torch::Tensor forward(torch::Tensor x) override
+    Tensor forward(torch::Tensor x) override
     {
         x = torch::relu(inLayer->forward(x));
         x = torch::relu(fc1->forward(x));
         auto a = poutLayer->forward(x);
         auto v = voutLayer->forward(x);
-        vector<Tensor> k = {a, v};
-        return cat(k);
+        return cat({a, v},1);
     }
+
 
     std::tuple<Tensor, Tensor, Tensor, Tensor> fullPass(Tensor state) override
     {
-        auto logits = forward(std::move(state)).slice(0,0,-1);
+        auto res = forward(std::move(state));
+        auto logits = res.slice(1,0,-1);
+        auto val = res.index({Slice(None,None),-1});
         cpprl::Categorical dist(nullptr, &logits);
         auto action = dist.sample();
         auto logpa =  dist.log_prob(action).unsqueeze(-1);
         auto entropy =  dist.entropy().unsqueeze(-1);
+
         auto isExploratory = action != torch::argmax(logits.detach());
-        return {action, isExploratory, logpa, entropy};
+
+        Tensor out = torch::cat({action.unsqueeze(-1), val.unsqueeze(-1)},1);
+
+        return {out, isExploratory, logpa, entropy};
 
     }
     vector<torch::Tensor> Parameters(bool recurse) override
@@ -59,7 +66,7 @@ struct FCAC : public nn::Module, Model
 
     Tensor selectAction(Tensor state) override
     {
-        auto logits = forward(std::move(state)).slice(0,0,-1);
+        auto logits = forward(std::move(state)).slice(1,0,-1);
         cpprl::Categorical dist(nullptr, &logits);
         auto action = dist.sample();
         return action;
@@ -67,7 +74,7 @@ struct FCAC : public nn::Module, Model
 
     Tensor selectGreedyAction(Tensor state) override
     {
-        auto logits = forward(std::move(state)).slice(0,0,-1);
+        auto logits = forward(std::move(state)).slice(1,0,-1);
         return torch::argmax(logits.detach());
     }
 
@@ -84,10 +91,10 @@ struct FCAC : public nn::Module, Model
         this->load(input_archive);
         input_archive.load_from(name);
     }
-    Tensor evaluate_state(Tensor& state)
+    Tensor evaluate_state(Tensor& state) override
     {
-        auto v = forward(state).index({-1});
+        auto v = forward(state);
+        v = v.index({Slice(None,None),-1}).unsqueeze(-1);
         return v;
     }
 };
-

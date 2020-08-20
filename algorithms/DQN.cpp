@@ -87,7 +87,7 @@ std::tuple<torch::Tensor, bool> DQN::interaction_step(Tensor& state, Env* env)
 	// fill episode info
 	trainingInfo.episodeReward.back() += reward;
 	trainingInfo.episodeTimestep.back() += 1.0;
-	trainingInfo.episodeExploration.back() += int(exploratoryActionTaken);
+	trainingInfo.episodeExploration.back() += (float)exploratoryActionTaken;
 
 	return { newState, isTerminal };
 }
@@ -156,7 +156,7 @@ std::tuple<ResultVec, double, double, double> DQN::train(Env* mainEnv, Env* eval
         double std100Reward = Utils::std(trainingInfo.episodeReward, 100);
         double mean100EvalScore = Utils::mean(trainingInfo.evaluationScores, 100);
         double std100EvalScore = Utils::std(trainingInfo.evaluationScores, 100);
-        vector<double> last100ExploreRatios = trainingInfo.explore_ratio(100);
+        vector<double> last100ExploreRatios = trainingInfo.explore_ratio( 100);
         double mean100ExploreRatio = Utils::mean(last100ExploreRatios);
         double std100ExploreRatio = Utils::std(last100ExploreRatios, 100);
 
@@ -166,7 +166,7 @@ std::tuple<ResultVec, double, double, double> DQN::train(Env* mainEnv, Env* eval
 
         auto _time = currentTime() - lastDebugTime;
         bool reachedDebugTime = _time >= LEAVE_PRINT_EVERY_N_SECS;
-        bool reachedMaxMinutes = wallClockElapsed >= maxMinutes * 60;
+        bool reachedMaxMinutes = wallClockElapsed >= (int)maxMinutes * 60;
         bool reachedMaxEpisodes = episode >= maxEpisodes;
         bool reachedGoalMeanReward = mean100EvalScore >= goal_mean_100_reward;
         bool trainingIsOver = reachedMaxMinutes || reachedMaxEpisodes || reachedGoalMeanReward;
